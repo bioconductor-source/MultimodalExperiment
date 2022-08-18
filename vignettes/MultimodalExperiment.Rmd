@@ -1,0 +1,247 @@
+---
+title: "MultimodalExperiment"
+author:
+    - name: "Lucas Schiffer"
+      affiliation: 
+        - Center for Data Science, Rutgers New Jersey Medical School, Newark, NJ
+date: '`r format(Sys.Date(), "%B %e, %Y")`'
+package: MultimodalExperiment
+output:
+    BiocStyle::html_document:
+        css: MultimodalExperiment.css
+vignette: >
+    %\VignetteIndexEntry{MultimodalExperiment}
+    %\VignetteEngine{knitr::rmarkdown}
+    %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+library(MultimodalExperiment)
+```
+
+# Introduction
+
+MultimodalExperiment is an S4 class that integrates bulk and single-cell experiment data; it is optimally storage-efficient, and its methods are exceptionally fast. It effortlessly represents multimodal data of any nature and features normalized experiment, subject, sample, and cell annotations, which are related to underlying biological experiments through maps. Its coordination methods are opt-in and employ database-like join operations internally to deliver fast and flexible management of multimodal data.
+
+```{r figure-one, echo = FALSE, fig.cap = "MultimodalExperiment Schematic. Normalized experiment, subject, sample, and cell annotations reside in the **Annotations** layer in blue at the top; the **Maps** layer in green in the middle contains the **experimentMap**, which specifies an experiment's type (bulk or single-cell), and the subject, sample, and cell maps which relate annotations to underlying biological data (i.e., experiments); the **Experiments** layer in orange at the bottom separates experiments by type (bulk or single-cell). The figure shows the subsetting of a MultimodalExperiment object: solid lines represent bulk information, and hatched lines represent single-cell information.", fig.wide = TRUE}
+knitr::include_graphics("MultimodalExperiment.png")
+```
+
+To begin using MultimodalExperiment, users should familiarize themselves with its application programming interface (API) outlined in the table below. The names of slot methods are consistent with those shown in the MultimodalExperiment Schematic (Figure \@ref(fig:figure-one)), except `bulkExperiments` and `singleCellExperiments` because these are not actually individual slots. Instead, the `experiments` slot contains a single `ExperimentList` object with both bulk and single-cell experiments as elements; the `experimentMap` is used to distinguish between the two types of experiments. Also, note that the API of MultimodalExperiment is relatively sparse because it is a data structure, and further packages are needed to conduct analysis.
+
+|                                                           |                                                                                  |
+|:----------------------------------------------------------|:---------------------------------------------------------------------------------|
+| **Constructors**                                          |                                                                                  |
+| &nbsp;&nbsp;&nbsp;&nbsp;`MultimodalExperiment`            | construct a MultimodalExperiment object                                          |
+| &nbsp;&nbsp;&nbsp;&nbsp;`ExperimentList`                  | construct an ExperimentList object                                               |
+| **Slots**                                                 |                                                                                  |
+| &nbsp;&nbsp;&nbsp;&nbsp;`experimentData`                  | get or set experimentData (experiment annotations)                               |
+| &nbsp;&nbsp;&nbsp;&nbsp;`subjectData`                     | get or set subjectData (subject annotations)                                     |
+| &nbsp;&nbsp;&nbsp;&nbsp;`sampleData`                      | get or set sampleData (sample annotations)                                       |
+| &nbsp;&nbsp;&nbsp;&nbsp;`cellData`                        | get or set cellData (cell annotations)                                           |
+| &nbsp;&nbsp;&nbsp;&nbsp;`experimentMap`                   | get or set experimentMap (experiment -> type map)                                |
+| &nbsp;&nbsp;&nbsp;&nbsp;`subjectMap`                      | get or set subjectMap (subject -> experiment map)                                |
+| &nbsp;&nbsp;&nbsp;&nbsp;`sampleMap`                       | get or set sampleMap (sample -> subject map)                                     |
+| &nbsp;&nbsp;&nbsp;&nbsp;`cellMap`                         | get or set cellMap (cell -> sample map)                                          |
+| &nbsp;&nbsp;&nbsp;&nbsp;`experiments`                     | get or set experiments                                                           |
+| &nbsp;&nbsp;&nbsp;&nbsp;`metadata`                        | get or set metadata                                                              |
+| **Annotations**                                           |                                                                                  |
+| &nbsp;&nbsp;&nbsp;&nbsp;`joinAnnotations`                 | join experimentData, subjectData, sampleData, and cellData                       |
+| **Maps**                                                  |                                                                                  |
+| &nbsp;&nbsp;&nbsp;&nbsp;`joinMaps`                        | join experimentMap, subjectMap, sampleMap, and cellMap                           |
+| **Experiments**                                           |                                                                                  |
+| &nbsp;&nbsp;&nbsp;&nbsp;`experiment(ME, i)`               | get or set experiments element by index                                          |
+| &nbsp;&nbsp;&nbsp;&nbsp;`experiment(ME, "name")`          | get or set experiments element by name                                           |
+| &nbsp;&nbsp;&nbsp;&nbsp;`bulkExperiments`                 | get or set experiments element(s) where `type == "bulk"`                         |
+| &nbsp;&nbsp;&nbsp;&nbsp;`singleCellExperiments`           | get or set experiments element(s) where `type == "single-cell"`                  |
+| **Names**                                                 |                                                                                  |
+| &nbsp;&nbsp;&nbsp;&nbsp;`rownames`                        | get or set rownames of experiments element(s)                                    |
+| &nbsp;&nbsp;&nbsp;&nbsp;`colnames`                        | get or set colnames of experiments element(s)                                    |
+| &nbsp;&nbsp;&nbsp;&nbsp;`experimentNames`                 | get or set names of experiments                                                  |
+| **Subsetting**                                            |                                                                                  |
+| &nbsp;&nbsp;&nbsp;&nbsp;`ME[i, j]`                        | subset rows and/or columns of experiments                                        |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`ME[i, ]` | &nbsp;&nbsp;&nbsp;&nbsp;`i`: list, List, LogicalList, IntegerList, CharacterList |
+| &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;`ME[, j]` | &nbsp;&nbsp;&nbsp;&nbsp;`j`: list, List, LogicalList, IntegerList, CharacterList |
+| **Coordination**                                          |                                                                                  |
+| &nbsp;&nbsp;&nbsp;&nbsp;`propagate`                       | propagate experiment, subject, sample, and cell indices across all tables        |
+| &nbsp;&nbsp;&nbsp;&nbsp;`harmonize`                       | harmonize experiment, subject, sample, and cell indices across all tables        |
+
+As the API table above might suggest, the coordination methods of MultimodalExperiment are opt-in, meaning the propagation and harmonization of indices are deferred until the user request them. This philosophy prevents computationally expensive operations from being called repetitively while changes to a MultimodalExperiment object are made.
+
+# Example Data
+
+To demonstrate the functionality of the MultimodalExperiment class, a subset of the *PBMCs of a Healthy Donor - 5' Gene Expression with a Panel of TotalSeq™-C Antibodies* dataset from 10x Genomics has been included in the MultimodalExperiment package. Specifically, human peripheral blood mononuclear cells (PBMCs) from a single healthy donor were profiled by cellular indexing of transcriptomes and epitopes by sequencing (CITE-seq) to generate single-cell antibody-derived tag sequencing (scADTseq) and single-cell RNA sequencing (scRNAseq) data simultaneously; the scRNAseq data was summed into pseudo-bulk RNA sequencing (pbRNAseq) data using `r BiocStyle::Biocpkg("scuttle")`. The dimensions of resulting matrices were reduced to conserve storage because these data are only used for demonstration here.
+
+```{r}
+pbRNAseq[1:4, 1:1, drop = FALSE]
+scRNAseq[1:4, 1:4, drop = FALSE]
+scADTseq[1:4, 1:4, drop = FALSE]
+```
+
+The dataset does not include annotations, and only limited information can be gathered from its citation[^1], as follows:
+
+1. These data are known to come from peripheral blood mononuclear cells (PBMCs)
+2. These data are known to come from a single, healthy donor
+3. These data were published on November 19, 2018
+
+Where a MultimodalExperiment object is constructed from these data in the proceeding section, these facts will be used to create experiment, subject, and sample annotations.
+
+# Construction
+
+To construct a MultimodalExperiment object from the example data, begin by assigning an empty MultimodalExperiment object to the variable `ME`.
+
+```{r}
+ME <-
+    MultimodalExperiment()
+```
+
+Then, use the `bulkExperiments<-` method to assign a named ExperimentList containing the pbRNAseq matrix as the bulkExperiments of the `ME` object.
+
+```{r}
+bulkExperiments(ME) <-
+    ExperimentList(
+        pbRNAseq = pbRNAseq
+    )
+```
+
+Next, use the `singleCellExperiments<-` method to assign a named ExperimentList containing the scADTseq and scRNAseq matrices as the singleCellExperiments of the `ME` object.
+
+```{r}
+singleCellExperiments(ME) <-
+    ExperimentList(
+        scADTseq = scADTseq,
+        scRNAseq = scRNAseq
+    )
+```
+
+The `bulkExperiments<-` and `singleCellExperiments<-` methods are the only exceptions to opt-in coordination; they automatically propagate experiment, sample, and cell indices into the relevant annotation (experimentData, sampleData, and cellData) and map (experimentMap, sampleMap, and cellMap) slots to simplify the process of construing a MultimodalExperiment object. Despite their automatic propagation, these methods remain computationally efficient because they do not call `propagate` internally.
+
+To establish that all experiments are related to a single subject, the value `"SUBJECT-1"` is assigned to the `"subject"` column of the `subjectMap`.
+
+```{r}
+subjectMap(ME)[["subject"]] <-
+    "SUBJECT-1"
+```
+
+To establish that all samples are related to a single subject, the value `"SUBJECT-1"` is assigned to the `"subject"` column of the `sampleMap`.
+
+```{r}
+sampleMap(ME)[["subject"]] <-
+    "SUBJECT-1"
+```
+
+To establish that all cells are related to a single sample, the value `"SAMPLE-1"` is assigned to the `"sample"` column of the `cellMap`.
+
+```{r}
+cellMap(ME)[["sample"]] <-
+    "SAMPLE-1"
+```
+
+To make the relationships established in the preceding steps clear to the reader, the `joinMaps` method is used to display all maps joined into an unnormalized DataFrame object.
+
+```{r}
+joinMaps(ME)
+```
+
+Although the relationships established should now be clear, it is important to note that the unnormalized representation is not storage efficient and is not how maps are stored in a MultimodalExperiment object. The design of MultimodalExperiment takes advantage of the structure of multimodal data where sample or cell indices are repeated across experiments by storing annotations and relationships only once.
+
+In the MultimodalExperiment paradigm, cells belong to samples, samples belong to subjects, and subjects participate in experiments; these relationships were established above with modifications to the cell, sample, and subject maps. However, the subject indices created when the subject and sample maps were modified were not added to the row names of the `subjectData` slot per the opt-in principle. The `propagate` method inserts experiment, subject, sample, and cell indices into all relevant tables by taking their union and adding missing indices; it is used below to add the missing indices to the `subjectData` slot.
+
+```{r}
+ME <-
+    propagate(ME)
+```
+
+Experiment, subject, sample, and cell indices are now present across all annotation and map slots, and the order of row names across annotation slots is also known. The order of row names of experiment, sample, and cell annotations is consistent with their order of insertion; this means the `experimentData` slot contains a DataFrame with three rows (pbRNAseq, scADTseq, and scRNAseq) and zero columns. To establish when the data were published, three dates are assigned to the `"published"` column of `experimentData`.
+
+```{r}
+experimentData(ME)[["published"]] <-
+    c(NA_character_, "2018-11-19", "2018-11-19") |>
+    as.Date()
+```
+
+The data are known to come from a single, healthy subject; this is annotated by assigning the value `"healthy"` to the `"condition"` column of `subjectData`.
+
+```{r}
+subjectData(ME)[["condition"]] <-
+    as.character("healthy")
+```
+
+The data are also known to come from PBMCs; this is annotated by assigning the value `"peripheral blood mononuclear cells"` to the `"sampleType"` column of `sampleData`.
+
+```{r}
+sampleData(ME)[["sampleType"]] <-
+    as.character("peripheral blood mononuclear cells")
+```
+
+As no cell annotations are provided, a naive cell type classification function is implemented below for demonstration (i.e., do not use these classifications for research purposes).
+
+```{r}
+cellType <- function(x) {
+    if (x[["CD4"]] > 0L) {
+        return("T Cell")
+    }
+
+    if (x[["CD14"]] > 0L) {
+        return("Monocyte")
+    }
+
+    if (x[["CD19"]] > 0L) {
+        return("B Cell")
+    }
+
+    if (x[["CD56"]] > 0L) {
+        return("NK Cell")
+    }
+
+    NA_character_
+}
+```
+
+To annotate cell types, the `"cellType"` column of `cellData` is assigned by piping the `scADTseq` experiment to the apply function, which applies the `cellType` function over the columns of the matrix.
+
+```{r}
+cellData(ME)[["cellType"]] <-
+    experiment(ME, "scADTseq") |>
+    apply(2L, cellType)
+```
+
+This completes the process of constructing a MultimodalExperiment object from the example data; now, when the `ME` variable is called, the `show` method is used to display essential information about the object. 
+
+```{r}
+ME
+```
+
+Notice that `cellData` contains only 5,000 rows, while there are two `singleCellExperiments` of 5,000 rows each; the annotations are stored just once because they apply to the same single cells.
+
+# Manipulation
+
+To help users understand how to manipulate a MultimodalExperiment object, a brief example of how to filter out everything except monocytes in singleCellExperiments is shown here. First, a logical vector is created from the `"cellType"` column of `cellData`.
+
+```{r}
+isMonocyte <-
+    cellData(ME)[["cellType"]] %in% "Monocyte"
+```
+
+Then, `cellData` is assigned as `cellData` subset to include only the rows which are annotated as monocytes.
+
+```{r}
+cellData(ME) <-
+    cellData(ME)[isMonocyte, , drop = FALSE]
+```
+
+When the `harmonize` method is called, the intersection of experiment, subject, sample, and cell indices from all relevant tables is taken, and extraneous indices are deleted. Notice the `scADTseq` and `scRNAseq` experiments only contain 685 columns each now.
+
+```{r}
+harmonize(ME)
+```
+
+Finally, while learning to use the MultimodalExperiment package, print out the [Cheat Sheet](https://github.com/schifferl/MultimodalExperiment/blob/master/MultimodalExperiment.pdf){target="_blank"} and consult the documentation for specific methods for further usage examples.
+
+# Session Info
+
+```{r}
+sessionInfo()
+```
+
+[^1]: *PBMCs of a Healthy Donor - 5' Gene Expression with a Panel of TotalSeq™-C Antibodies*, Single Cell Immune Profiling Dataset by Cell Ranger 3.0.0, 10x Genomics, (2018, November 19).

@@ -1,0 +1,12 @@
+^LICENSE$
+^README\.Rmd$
+^MultimodalExperiment\.Rproj$
+^CODE_OF_CONDUCT\.md$
+^CONTRIBUTING\.md$
+^SECURITY\.md$
+^MultimodalExperiment\.pdf$
+^MultimodalExperiment\.png$
+^data-raw$
+^examples$
+^\.github$
+^\.Rproj\.user$
