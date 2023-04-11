@@ -20,14 +20,29 @@ management of multimodal data.
 
 ## Installation
 
-You can install
-*[MultimodalExperiment](https://github.com/schifferl/MultimodalExperiment)*
-using *[BiocManager](https://CRAN.R-project.org/package=BiocManager)*
-with:
+To install
+*[MultimodalExperiment](https://bioconductor.org/packages/3.17/MultimodalExperiment)*
+from Bioconductor, use
+*[BiocManager](https://CRAN.R-project.org/package=BiocManager)* as
+follows.
+
+``` r
+BiocManager::install("MultimodalExperiment")
+```
+
+To install
+*[MultimodalExperiment](https://bioconductor.org/packages/3.17/MultimodalExperiment)*
+from GitHub, use
+*[BiocManager](https://CRAN.R-project.org/package=BiocManager)* as
+follows.
 
 ``` r
 BiocManager::install("schifferl/MultimodalExperiment", dependencies = TRUE, build_vignettes = TRUE)
 ```
+
+Most users should simply install
+*[MultimodalExperiment](https://bioconductor.org/packages/3.17/MultimodalExperiment)*
+from Bioconductor.
 
 ## Cheat Sheet
 

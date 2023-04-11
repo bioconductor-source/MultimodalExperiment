@@ -19,6 +19,22 @@ vignette: >
 library(MultimodalExperiment)
 ```
 
+# Installation
+
+To install `r BiocStyle::Biocpkg("MultimodalExperiment")` from Bioconductor, use `r BiocStyle::CRANpkg("BiocManager")` as follows.
+
+```{r, eval = FALSE}
+BiocManager::install("MultimodalExperiment")
+```
+
+To install `r BiocStyle::Biocpkg("MultimodalExperiment")` from GitHub, use `r BiocStyle::CRANpkg("BiocManager")` as follows.
+
+```{r, eval = FALSE}
+BiocManager::install("schifferl/MultimodalExperiment", dependencies = TRUE, build_vignettes = TRUE)
+```
+
+Most users should simply install `r BiocStyle::Biocpkg("MultimodalExperiment")` from Bioconductor.
+
 # Introduction
 
 MultimodalExperiment is an S4 class that integrates bulk and single-cell experiment data; it is optimally storage-efficient, and its methods are exceptionally fast. It effortlessly represents multimodal data of any nature and features normalized experiment, subject, sample, and cell annotations, which are related to underlying biological experiments through maps. Its coordination methods are opt-in and employ database-like join operations internally to deliver fast and flexible management of multimodal data.

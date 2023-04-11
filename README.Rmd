@@ -14,11 +14,19 @@ MultimodalExperiment is an S4 class that integrates bulk and single-cell experim
 
 ## Installation
 
-You can install `r BiocStyle::Githubpkg("schifferl/MultimodalExperiment")` using `r BiocStyle::CRANpkg("BiocManager")` with:
+To install `r BiocStyle::Biocpkg("MultimodalExperiment")` from Bioconductor, use `r BiocStyle::CRANpkg("BiocManager")` as follows.
+
+```{r, eval = FALSE}
+BiocManager::install("MultimodalExperiment")
+```
+
+To install `r BiocStyle::Biocpkg("MultimodalExperiment")` from GitHub, use `r BiocStyle::CRANpkg("BiocManager")` as follows.
 
 ```{r, eval = FALSE}
 BiocManager::install("schifferl/MultimodalExperiment", dependencies = TRUE, build_vignettes = TRUE)
 ```
+
+Most users should simply install `r BiocStyle::Biocpkg("MultimodalExperiment")` from Bioconductor.
 
 ## Cheat Sheet
 
